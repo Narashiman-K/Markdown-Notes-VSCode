@@ -31,8 +31,15 @@ export function activate(context: vscode.ExtensionContext): void {
     // The title-bar button, which resolves its document the same way.
     vscode.commands.registerCommand('suprasuta.convertFromPreview', () => convertCommand(undefined)),
 
-    vscode.commands.registerCommand('suprasuta.openWithDefault', (uri?: vscode.Uri) => {
-      if (uri) void vscode.commands.executeCommand('vscode.openWith', uri, 'default')
+    /*
+     * Hands the file to whatever application owns it — Word, Excel, a PDF
+     * reader. The preview is a convenience, not a replacement, and someone
+     * looking at a spreadsheet in Markdown quite reasonably wants the
+     * spreadsheet.
+     */
+    vscode.commands.registerCommand('suprasuta.openInDefaultApp', async (uri?: vscode.Uri) => {
+      const target = targetUri(uri)
+      if (target) await vscode.env.openExternal(target)
     })
   )
 }

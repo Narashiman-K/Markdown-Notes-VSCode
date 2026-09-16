@@ -84,15 +84,15 @@
       },
       {
         "command": "suprasuta.convertFromPreview",
-        "title": "Convert to an editable Markdown file",
+        "title": "Save as a Markdown file",
         "category": "Suprasūtā",
         "icon": "$(go-to-file)"
       },
       {
-        "command": "suprasuta.openWithDefault",
-        "title": "Reopen with the default editor",
+        "command": "suprasuta.openInDefaultApp",
+        "title": "Open in its own application",
         "category": "Suprasūtā",
-        "icon": "$(file-binary)"
+        "icon": "$(link-external)"
       }
     ],
     "menus": {
@@ -120,7 +120,7 @@
           "when": "false"
         },
         {
-          "command": "suprasuta.openWithDefault",
+          "command": "suprasuta.openInDefaultApp",
           "when": "false"
         }
       ],
