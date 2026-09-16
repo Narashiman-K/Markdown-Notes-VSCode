@@ -28,8 +28,10 @@ export function activate(context: vscode.ExtensionContext): void {
       convertCommand(uri)
     ),
 
-    // The title-bar button, which resolves its document the same way.
+    // The toolbar button, which resolves its document the same way.
     vscode.commands.registerCommand('suprasuta.convertFromPreview', () => convertCommand(undefined)),
+
+    vscode.commands.registerCommand('suprasuta.editAsMarkdown', (uri?: vscode.Uri) => editCommand(uri)),
 
     /*
      * Hands the file to whatever application owns it — Word, Excel, a PDF
@@ -58,6 +60,60 @@ function targetUri(passed: vscode.Uri | undefined): vscode.Uri | undefined {
   if (vscode.window.activeTextEditor) return vscode.window.activeTextEditor.document.uri
   const input = vscode.window.tabGroups.activeTabGroup.activeTab?.input as { uri?: vscode.Uri } | undefined
   return input?.uri
+}
+
+/**
+ * The Edit half of the View/Edit toggle.
+ *
+ * A .pdf or .docx cannot be written back to, so Edit necessarily means editing
+ * the Markdown. It opens in a real editor tab rather than a text box in the
+ * preview, so find and replace, multiple cursors, git and every other editor
+ * extension keep working — reimplementing a worse editor inside a webview would
+ * be a strange thing to do inside an editor.
+ *
+ * Nothing is written to disk. The buffer is untitled, but carries the path the
+ * file would have, so Ctrl+S offers to save it beside the original with the
+ * right name already filled in. Clicking Edit and changing your mind therefore
+ * leaves the folder exactly as it was.
+ *
+ * If a converted file is already sitting there, that one opens instead —
+ * offering to create a second copy of a file the user already has would be a
+ * small betrayal of what the button says.
+ */
+async function editCommand(uri: vscode.Uri | undefined): Promise<void> {
+  const target = targetUri(uri)
+  if (!target || !isSupported(target)) {
+    void vscode.window.showWarningMessage('Open a supported document first, then choose Edit.')
+    return
+  }
+
+  const beside = markdownUriFor(target)
+  try {
+    await vscode.workspace.fs.stat(beside)
+    const existing = await vscode.workspace.openTextDocument(beside)
+    await vscode.window.showTextDocument(existing, { preview: false })
+    return
+  } catch {
+    // Nothing saved yet, which is the normal case.
+  }
+
+  await vscode.window.withProgress(
+    { location: vscode.ProgressLocation.Window, title: `Opening ${basename(target)} for editing…` },
+    async () => {
+      try {
+        const { markdown } = await convertDocument(target)
+
+        // `untitled:` with a concrete path is what makes the save dialog
+        // default to report.pdf.md next to the original, and what gives the
+        // buffer Markdown syntax highlighting without setting a language.
+        const draft = await vscode.workspace.openTextDocument(beside.with({ scheme: 'untitled' }))
+        const editor = await vscode.window.showTextDocument(draft, { preview: false })
+        await editor.edit((builder) => builder.insert(new vscode.Position(0, 0), markdown))
+      } catch (err) {
+        void vscode.window.showErrorMessage(String((err as Error)?.message ?? err))
+      }
+    }
+  )
 }
 
 async function convertCommand(uri: vscode.Uri | undefined): Promise<void> {

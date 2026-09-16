@@ -36,6 +36,7 @@ export const VIEW_TYPE = 'suprasuta.documentPreview'
  */
 const ALLOWED_COMMANDS = [
   'suprasuta.convertFromPreview',
+  'suprasuta.editAsMarkdown',
   'suprasuta.openInDefaultApp'
 ] as const
 
@@ -115,37 +116,61 @@ export class DocumentPreviewProvider implements vscode.CustomReadonlyEditorProvi
 }
 
 /**
- * The bar at the top of every preview.
+ * The toolbar at the top of every preview.
  *
- * Written to be understood without instructions: it says what you are looking
- * at, that nothing was uploaded, and offers the two things anyone would want —
- * keep it as a file, or open it in the application it came from.
+ * Three controls, each with a word on it, because the first version was an
+ * unlabelled glyph in the editor title bar and nobody could tell what it was
+ * for. The bar has to be readable by someone who has never opened the
+ * documentation and is not going to.
+ *
+ * View/Edit is a segmented pair rather than two buttons: it says, without a
+ * sentence of explanation, that these are two states of one thing and that you
+ * are currently in the first. View is inert — it is where you already are.
+ *
+ * Everything here is an ordinary link to a `command:` URI, because the webview
+ * runs with scripts disabled and will keep doing so. It is rendering somebody's
+ * document, and a document is untrusted input.
  */
 function actionBar(name: string, cached: vscode.Uri | undefined, failed = false): string {
-  const save = `command:suprasuta.convertFromPreview`
-  const open = `command:suprasuta.openInDefaultApp`
+  if (failed) {
+    return `<div class="bar">
+      <div class="seg"><span class="seg-item active">View</span></div>
+      <a class="btn ghost" href="command:suprasuta.openInDefaultApp">Open original</a>
+    </div>
+    <div class="bar-sub">${escapeHtml(name)} &middot; could not be read</div>`
+  }
 
   return `<div class="bar">
-    <div class="bar-text">
-      <div class="bar-title">${escapeHtml(name)}</div>
-      <div class="bar-sub">${
-        failed
-          ? 'This document could not be read.'
-          : 'Preview only &middot; converted on your computer &middot; nothing uploaded, nothing saved'
-      }</div>
+    <a class="btn primary" href="command:suprasuta.convertFromPreview"
+       title="Writes ${escapeHtml(name)}.md next to the original document">${SAVE_ICON}Save as .md</a>
+
+    <div class="seg" role="group">
+      <span class="seg-item active" title="You are reading the document">View</span>
+      <a class="seg-item" href="command:suprasuta.editAsMarkdown"
+         title="Open the text in an editable tab. Nothing is written until you save.">Edit</a>
     </div>
-    <div class="bar-actions">
-      ${failed ? '' : `<a class="btn primary" href="${save}" title="Creates ${escapeHtml(name)}.md next to the original">Save as Markdown file</a>`}
-      <a class="btn" href="${open}" title="Open in the application this file belongs to">Open in its own app</a>
-    </div>
+
+    <a class="btn ghost" href="command:suprasuta.openInDefaultApp"
+       title="Open in the application this file belongs to">${APP_ICON}Open original</a>
   </div>
-  ${
-    cached
-      ? `<div class="hint">Chat can read this document: type <code>#document</code> in Copilot, or point any agent at
-         <code>${escapeHtml(cached.fsPath)}</code></div>`
-      : ''
-  }`
+  <div class="bar-sub">
+    <strong>${escapeHtml(name)}</strong> &middot; converted on your computer &middot; nothing uploaded${
+      cached
+        ? ` &middot; chat can read it: type <code>#document</code>, or point an agent at <code>${escapeHtml(cached.fsPath)}</code>`
+        : ''
+    }
+  </div>`
 }
+
+// Inline SVG rather than a file: no resource is fetched, so the strict
+// Content-Security-Policy below needs no exception for it.
+const SAVE_ICON =
+  '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">' +
+  '<path fill="currentColor" d="M3 2h8.5L14 4.5V13a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zm1 1v3h6V3H4zm4 5.5A2.5 2.5 0 1 0 8 13.5a2.5 2.5 0 0 0 0-5z"/></svg>'
+
+const APP_ICON =
+  '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">' +
+  '<path fill="currentColor" d="M9 2h5v5h-1.5V4.56L7.53 9.53 6.47 8.47l4.97-4.97H9V2zM3 4h4v1.5H3.5v7h7V9H12v4a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/></svg>'
 
 function status(title: string, detail: string): string {
   return `<div class="status"><div><strong>${title}</strong>${detail}</div></div>`
@@ -182,21 +207,38 @@ function page(title: string, body: string): string {
     z-index: 10;
     display: flex;
     flex-wrap: wrap;
-    gap: 12px 16px;
+    gap: 10px;
     align-items: center;
-    justify-content: space-between;
-    padding: 14px 0 14px;
-    margin-bottom: 4px;
+    padding: 10px 0;
+    background: var(--vscode-editor-background);
+  }
+  /* Pushes "Open original" to the far right, away from the two primary
+     controls, so the grouping reads as: act on it | look at it | leave. */
+  .bar .ghost { margin-left: auto; }
+
+  .bar-sub {
+    position: sticky;
+    top: 48px;
+    z-index: 10;
+    color: var(--vscode-descriptionForeground);
     background: var(--vscode-editor-background);
     border-bottom: 1px solid var(--vscode-panel-border);
+    font-size: .85em;
+    padding-bottom: 10px;
+    margin-bottom: 8px;
   }
-  .bar-title { font-size: 1.05em; font-weight: 600; }
-  .bar-sub { color: var(--vscode-descriptionForeground); font-size: .88em; margin-top: 2px; }
-  .bar-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .bar-sub strong { color: var(--vscode-foreground); }
+  .bar-sub code {
+    background: var(--vscode-textCodeBlock-background);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
 
   .btn {
-    display: inline-block;
-    padding: 6px 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
     border-radius: 4px;
     font-size: .92em;
     text-decoration: none;
@@ -211,17 +253,37 @@ function page(title: string, body: string): string {
     color: var(--vscode-button-foreground);
   }
   .btn.primary:hover { background: var(--vscode-button-hoverBackground); }
-
-  .hint {
+  .btn.ghost {
+    background: transparent;
     color: var(--vscode-descriptionForeground);
-    font-size: .85em;
-    margin: 10px 0 20px;
+    border-color: var(--vscode-panel-border);
   }
-  .hint code {
-    background: var(--vscode-textCodeBlock-background);
-    padding: 1px 5px;
-    border-radius: 3px;
+  .btn.ghost:hover {
+    background: var(--vscode-toolbar-hoverBackground);
+    color: var(--vscode-foreground);
   }
+
+  /* The View | Edit pair. One outline around both, the current one filled. */
+  .seg {
+    display: inline-flex;
+    border: 1px solid var(--vscode-panel-border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .seg-item {
+    padding: 5px 16px;
+    font-size: .92em;
+    text-decoration: none;
+    white-space: nowrap;
+    color: var(--vscode-foreground);
+  }
+  .seg-item + .seg-item { border-left: 1px solid var(--vscode-panel-border); }
+  .seg-item.active {
+    background: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+    font-weight: 600;
+  }
+  a.seg-item:hover { background: var(--vscode-toolbar-hoverBackground); }
 
   h1, h2, h3, h4 { line-height: 1.3; margin: 1.6em 0 .5em; }
   h1 { font-size: 1.9em; border-bottom: 1px solid var(--vscode-panel-border); padding-bottom: .3em; }

@@ -89,6 +89,12 @@
         "icon": "$(go-to-file)"
       },
       {
+        "command": "suprasuta.editAsMarkdown",
+        "title": "Edit as Markdown",
+        "category": "Suprasūtā",
+        "icon": "$(edit)"
+      },
+      {
         "command": "suprasuta.openInDefaultApp",
         "title": "Open in its own application",
         "category": "Suprasūtā",
@@ -117,6 +123,10 @@
         },
         {
           "command": "suprasuta.convertFromPreview",
+          "when": "false"
+        },
+        {
+          "command": "suprasuta.editAsMarkdown",
           "when": "false"
         },
         {
