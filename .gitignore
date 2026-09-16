@@ -3,3 +3,5 @@ dist/
 build/
 *.vsix
 .vscode-test/
+# Conversion output produced while testing against the sample documents.
+samples/*.md
