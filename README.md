@@ -30,11 +30,16 @@ read-only tab. Nothing is written to disk, and nothing leaves your machine.
 | **Preview** | `.pdf` `.docx` `.xlsx` `.xlsm` `.xls` `.pptx` `.odt` `.ods` `.epub` |
 | **Convert** | All of the above, plus `.csv` and `.tsv` |
 
-When you want an editable file, **Convert to Markdown** — in the explorer
-right-click menu, or the button in the preview's title bar — writes
-`report.pdf.md` beside the original. The full original name is kept, so a folder
-containing `report.pdf`, `report.docx` and `report.epub` gives you three
-distinct files rather than a guessing game.
+A toolbar across the top of the preview gives you three things:
+
+| | |
+| --- | --- |
+| **Save as .md** | Writes `report.pdf.md` beside the original. The full original name is kept, so a folder containing `report.pdf`, `report.docx` and `report.epub` gives three distinct files rather than a guessing game. |
+| **View / Edit** | Edit opens the text in an ordinary editor tab. Nothing is written until you press <kbd>Ctrl</kbd>+<kbd>S</kbd>, which offers to save it beside the original with the name already filled in. If a converted file is already there, that one opens instead. |
+| **Open original** | Hands the file to Word, Excel, or whatever owns it. |
+
+**Convert to Markdown** is also in the explorer right-click menu, for converting
+without opening anything.
 
 Tables come through as real Markdown tables, headings are preserved, and code
 blocks are fenced properly.
