@@ -2,7 +2,7 @@
   "name": "suprasuta-markdown-notes",
   "displayName": "Suprasūtā Markdown Notes",
   "description": "Open PDF, Word, Excel, PowerPoint, OpenDocument and EPUB files in VS Code as Markdown. Converts locally — nothing is uploaded.",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "publisher": "narashiman-k",
   "license": "SEE LICENSE IN LICENSE.md",
   "author": {
