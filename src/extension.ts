@@ -1,0 +1,136 @@
+/**
+ * Suprasūtā Markdown Notes for VS Code.
+ *
+ * Two things, and deliberately only two:
+ *
+ *   1. Documents VS Code cannot open — PDF, Word, Excel, PowerPoint,
+ *      OpenDocument, EPUB — open in a read-only Markdown preview.
+ *   2. Any of them can be converted to a real .md file on request.
+ *
+ * Conversion happens on this machine. No upload, no account, no Pandoc, no
+ * Python. That last part is the whole reason to install it: the existing
+ * converter extensions shell out to a tool the user has to install separately.
+ */
+import * as vscode from 'vscode'
+import { basename, convertDocument, isSupported, markdownUriFor } from './convert'
+import { DocumentPreviewProvider, VIEW_TYPE } from './preview'
+import { registerAgentTool } from './agent'
+
+export function activate(context: vscode.ExtensionContext): void {
+  // Chat access: a language model tool for Copilot, and a cache file for
+  // agents that can only read from disk.
+  registerAgentTool(context)
+
+  context.subscriptions.push(
+    DocumentPreviewProvider.register(context),
+
+    vscode.commands.registerCommand('suprasuta.convertToMarkdown', (uri?: vscode.Uri) =>
+      convertCommand(uri)
+    ),
+
+    // The title-bar button, which resolves its document the same way.
+    vscode.commands.registerCommand('suprasuta.convertFromPreview', () => convertCommand(undefined)),
+
+    vscode.commands.registerCommand('suprasuta.openWithDefault', (uri?: vscode.Uri) => {
+      if (uri) void vscode.commands.executeCommand('vscode.openWith', uri, 'default')
+    })
+  )
+}
+
+/**
+ * Works out which document the user means.
+ *
+ * Three sources, because the command arrives from three places. An explorer
+ * right-click passes the URI. The Command Palette passes nothing, and
+ * `activeTextEditor` is undefined whenever a custom editor is in front — which
+ * is exactly the case here, since previewing a PDF is what makes someone want
+ * to convert it. The active tab's input covers that.
+ */
+function targetUri(passed: vscode.Uri | undefined): vscode.Uri | undefined {
+  if (passed) return passed
+  if (vscode.window.activeTextEditor) return vscode.window.activeTextEditor.document.uri
+  const input = vscode.window.tabGroups.activeTabGroup.activeTab?.input as { uri?: vscode.Uri } | undefined
+  return input?.uri
+}
+
+async function convertCommand(uri: vscode.Uri | undefined): Promise<void> {
+  const target = targetUri(uri)
+  if (!target) {
+    void vscode.window.showWarningMessage(
+      'Open or select a document first, then run Convert to Markdown.'
+    )
+    return
+  }
+
+  if (!isSupported(target)) {
+    void vscode.window.showWarningMessage(
+      `Suprasūtā cannot convert .${target.path.split('.').pop()} files.`
+    )
+    return
+  }
+
+  const config = vscode.workspace.getConfiguration('suprasuta')
+  const askWhere = config.get<string>('convertedFileLocation') === 'askEachTime'
+
+  await vscode.window.withProgress(
+    { location: vscode.ProgressLocation.Notification, title: `Converting ${basename(target)}…` },
+    async () => {
+      try {
+        const { markdown } = await convertDocument(target)
+
+        let destination = markdownUriFor(target)
+        if (askWhere) {
+          const chosen = await vscode.window.showSaveDialog({
+            defaultUri: destination,
+            filters: { Markdown: ['md'] }
+          })
+          if (!chosen) return
+          destination = chosen
+        } else {
+          destination = await freeName(destination, markdown)
+        }
+
+        await vscode.workspace.fs.writeFile(destination, Buffer.from(markdown, 'utf8'))
+
+        if (config.get<boolean>('openAfterConverting', true)) {
+          const doc = await vscode.workspace.openTextDocument(destination)
+          await vscode.window.showTextDocument(doc, { preview: false })
+        } else {
+          void vscode.window.showInformationMessage(`Saved ${basename(destination)}`)
+        }
+      } catch (err) {
+        void vscode.window.showErrorMessage(String((err as Error)?.message ?? err))
+      }
+    }
+  )
+}
+
+/**
+ * Avoids destroying an existing file, without producing numbered clutter.
+ *
+ * Converting the same document twice is normal — someone reopens it a week
+ * later — and numbering every attempt gave report.md, report-2.md, report-3.md
+ * in testing. If what is already there is exactly what would be written, that
+ * file is the result. Numbering is reserved for output that genuinely differs.
+ */
+async function freeName(preferred: vscode.Uri, markdown: string): Promise<vscode.Uri> {
+  const stem = preferred.path.replace(/\.md$/i, '')
+  let candidate = preferred
+
+  for (let n = 2; ; n++) {
+    let existing: Uint8Array
+    try {
+      existing = await vscode.workspace.fs.readFile(candidate)
+    } catch {
+      return candidate
+    }
+    if (Buffer.from(existing).toString('utf8') === markdown) return candidate
+    candidate = preferred.with({ path: `${stem}-${n}.md` })
+  }
+}
+
+export function deactivate(): void {
+  // Nothing to clean up: no processes, no watchers, no temporary files.
+}
+
+export { VIEW_TYPE }

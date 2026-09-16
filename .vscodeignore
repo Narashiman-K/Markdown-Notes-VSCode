@@ -1,0 +1,14 @@
+# Everything the marketplace does not need. The extension ships as one bundled
+# file plus jsdom, so sources, tests and the build toolchain stay out.
+.vscode/**
+.github/**
+src/**
+scripts/**
+samples/**
+node_modules/.bin/**
+**/*.map
+**/*.ts
+!dist/**/*.js
+tsconfig.json
+.npmrc
+.gitignore

@@ -1,0 +1,223 @@
+{
+  "name": "suprasuta-markdown-notes",
+  "displayName": "Suprasūtā Markdown Notes",
+  "description": "Open PDF, Word, Excel, PowerPoint, OpenDocument and EPUB files in VS Code as Markdown. Converts locally — nothing is uploaded.",
+  "version": "0.1.0",
+  "publisher": "narashiman-k",
+  "license": "SEE LICENSE IN LICENSE.md",
+  "author": {
+    "name": "Narashiman Krishnamurthy",
+    "url": "https://github.com/Narashiman-K"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Narashiman-K/Markdown-Notes-VSCode.git"
+  },
+  "homepage": "https://github.com/Narashiman-K/Markdown-Notes-VSCode#readme",
+  "bugs": {
+    "url": "https://github.com/Narashiman-K/Markdown-Notes-VSCode/issues"
+  },
+  "icon": "media/icon.png",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "Other",
+    "Visualization",
+    "Formatters"
+  ],
+  "keywords": [
+    "pdf to markdown",
+    "docx to markdown",
+    "word to markdown",
+    "excel to markdown",
+    "powerpoint to markdown",
+    "epub to markdown",
+    "open pdf",
+    "open word document",
+    "document converter",
+    "offline"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "customEditors": [
+      {
+        "viewType": "suprasuta.documentPreview",
+        "displayName": "Document preview (Markdown)",
+        "selector": [
+          {
+            "filenamePattern": "*.pdf"
+          },
+          {
+            "filenamePattern": "*.docx"
+          },
+          {
+            "filenamePattern": "*.xlsx"
+          },
+          {
+            "filenamePattern": "*.xlsm"
+          },
+          {
+            "filenamePattern": "*.xls"
+          },
+          {
+            "filenamePattern": "*.pptx"
+          },
+          {
+            "filenamePattern": "*.odt"
+          },
+          {
+            "filenamePattern": "*.ods"
+          },
+          {
+            "filenamePattern": "*.epub"
+          }
+        ],
+        "priority": "default"
+      }
+    ],
+    "commands": [
+      {
+        "command": "suprasuta.convertToMarkdown",
+        "title": "Convert to Markdown",
+        "category": "Suprasūtā"
+      },
+      {
+        "command": "suprasuta.convertFromPreview",
+        "title": "Convert to an editable Markdown file",
+        "category": "Suprasūtā",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "suprasuta.openWithDefault",
+        "title": "Reopen with the default editor",
+        "category": "Suprasūtā",
+        "icon": "$(file-binary)"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "suprasuta.convertToMarkdown",
+          "when": "resourceExtname =~ /\\.(pdf|docx|xlsx|xlsm|xls|pptx|odt|ods|epub|csv|tsv)$/i",
+          "group": "navigation@9"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "suprasuta.convertFromPreview",
+          "when": "activeCustomEditorId == suprasuta.documentPreview",
+          "group": "navigation@1"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "suprasuta.convertToMarkdown",
+          "when": "true"
+        },
+        {
+          "command": "suprasuta.convertFromPreview",
+          "when": "false"
+        },
+        {
+          "command": "suprasuta.openWithDefault",
+          "when": "false"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "suprasuta.convertToMarkdown",
+          "when": "resourceExtname =~ /\\.(pdf|docx|xlsx|xlsm|xls|pptx|odt|ods|epub|csv|tsv)$/i",
+          "group": "1_run"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Suprasūtā Markdown Notes",
+      "properties": {
+        "suprasuta.convertedFileLocation": {
+          "type": "string",
+          "enum": [
+            "besideOriginal",
+            "askEachTime"
+          ],
+          "enumDescriptions": [
+            "Save the .md next to the document it came from",
+            "Ask where to save each time"
+          ],
+          "default": "besideOriginal",
+          "description": "Where converted Markdown files are written."
+        },
+        "suprasuta.openAfterConverting": {
+          "type": "boolean",
+          "default": true,
+          "description": "Open the .md file in the editor after converting."
+        },
+        "suprasuta.cachePreviewsForAgents": {
+          "type": "boolean",
+          "default": true,
+          "description": "When a document is previewed, also save its Markdown to the extension's storage folder so chat agents that can only read files are able to find it. Nothing is written next to your documents."
+        }
+      }
+    },
+    "languageModelTools": [
+      {
+        "name": "suprasuta_convert_document",
+        "displayName": "Convert document to Markdown",
+        "modelDescription": "Read a PDF, Word, Excel, PowerPoint, OpenDocument or EPUB file from the user's machine and return its contents as Markdown. VS Code cannot read these formats natively, so use this whenever the user refers to such a document. Conversion happens locally and the file is not uploaded. Tables are preserved as Markdown tables.",
+        "userDescription": "Let chat read PDFs, Word files, spreadsheets and other documents",
+        "toolReferenceName": "document",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(file-text)",
+        "tags": [
+          "documents",
+          "markdown",
+          "conversion"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Absolute path to the document to read."
+            }
+          },
+          "required": [
+            "path"
+          ]
+        }
+      }
+    ]
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "watch": "node scripts/build.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "package": "node scripts/build.mjs --production && node scripts/package-vsix.mjs",
+    "vscode:prepublish": "node scripts/build.mjs --production",
+    "verify": "node scripts/verify-parsers.mjs"
+  },
+  "devDependencies": {
+    "@mixmark-io/domino": "^2.2.0",
+    "@types/jsdom": "^21.1.7",
+    "@types/markdown-it": "^14.1.2",
+    "@types/node": "^24.0.0",
+    "@types/turndown": "^5.0.5",
+    "@types/vscode": "^1.137.0",
+    "@vscode/vsce": "^4.0.0",
+    "@xmldom/xmldom": "^0.9.12",
+    "esbuild": "^0.25.0",
+    "highlight.js": "^11.11.0",
+    "jszip": "^3.10.1",
+    "mammoth": "^1.12.1",
+    "markdown-it": "^14.1.0",
+    "pdfjs-dist": "^4.10.38",
+    "turndown": "^7.2.4",
+    "turndown-plugin-gfm": "^1.0.2",
+    "typescript": "^5.7.2",
+    "xlsx": "^0.18.5"
+  },
+  "dependencies": {
+    "jsdom": "^26.1.0"
+  }
+}
