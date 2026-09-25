@@ -39,6 +39,9 @@
     "offline"
   ],
   "main": "./dist/extension.js",
+  "activationEvents": [
+    "onLanguage:markdown"
+  ],
   "contributes": {
     "customEditors": [
       {
@@ -167,9 +170,75 @@
           "type": "boolean",
           "default": true,
           "description": "When a document is previewed, also save its Markdown to the extension's storage folder so chat agents that can only read files are able to find it. Nothing is written next to your documents."
+        },
+        "suprasuta.highlightBlocks": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "codeBlock",
+              "blockquote",
+              "table",
+              "heading"
+            ],
+            "enumDescriptions": [
+              "Fenced and indented code blocks",
+              "Quoted passages",
+              "Tables, which can run for hundreds of lines after a spreadsheet conversion",
+              "Every heading line"
+            ]
+          },
+          "uniqueItems": true,
+          "default": [
+            "codeBlock",
+            "blockquote"
+          ],
+          "markdownDescription": "Which Markdown blocks get a background tint, so you can see where each one starts and ends. Set to `[]` to switch tinting off. Change the colours under `workbench.colorCustomizations` with the `suprasuta.*Background` keys."
         }
       }
     },
+    "colors": [
+      {
+        "id": "suprasuta.codeBlockBackground",
+        "description": "Background tint behind fenced and indented code blocks in Markdown.",
+        "defaults": {
+          "dark": "#ffffff0d",
+          "light": "#0000000a",
+          "highContrast": "#ffffff1f",
+          "highContrastLight": "#00000014"
+        }
+      },
+      {
+        "id": "suprasuta.blockquoteBackground",
+        "description": "Background tint behind blockquotes in Markdown.",
+        "defaults": {
+          "dark": "#7cb7ff14",
+          "light": "#0066cc0f",
+          "highContrast": "#7cb7ff26",
+          "highContrastLight": "#0066cc1f"
+        }
+      },
+      {
+        "id": "suprasuta.tableBackground",
+        "description": "Background tint behind Markdown tables.",
+        "defaults": {
+          "dark": "#9d7cff14",
+          "light": "#6b3fd40f",
+          "highContrast": "#9d7cff26",
+          "highContrastLight": "#6b3fd41f"
+        }
+      },
+      {
+        "id": "suprasuta.headingBackground",
+        "description": "Background tint behind Markdown heading lines.",
+        "defaults": {
+          "dark": "#ffc97c14",
+          "light": "#b072000f",
+          "highContrast": "#ffc97c26",
+          "highContrastLight": "#b072001f"
+        }
+      }
+    ],
     "languageModelTools": [
       {
         "name": "suprasuta_convert_document",

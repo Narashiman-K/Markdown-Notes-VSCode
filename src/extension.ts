@@ -15,11 +15,15 @@ import * as vscode from 'vscode'
 import { basename, convertDocument, isSupported, markdownUriFor } from './convert'
 import { DocumentPreviewProvider, VIEW_TYPE } from './preview'
 import { registerAgentTool } from './agent'
+import { registerBlockTints } from './decorations'
 
 export function activate(context: vscode.ExtensionContext): void {
   // Chat access: a language model tool for Copilot, and a cache file for
   // agents that can only read from disk.
   registerAgentTool(context)
+
+  // Block boundaries made visible in any Markdown file, converted or not.
+  registerBlockTints(context)
 
   context.subscriptions.push(
     DocumentPreviewProvider.register(context),
