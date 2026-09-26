@@ -187,12 +187,27 @@ function actionBar(name: string, cached: vscode.Uri | undefined, failed = false)
        title="Open in the application this file belongs to">${APP_ICON}Open original</a>
   </div>
   <div class="bar-sub">
-    <strong>${escapeHtml(name)}</strong> &middot; converted on your computer &middot; nothing uploaded${
-      cached
-        ? ` &middot; chat can read it: type <code>#document</code>, or point an agent at <code>${escapeHtml(cached.fsPath)}</code>`
-        : ''
-    }
-  </div>`
+    <strong>${escapeHtml(name)}</strong> &middot; converted on your computer, nothing uploaded
+  </div>
+  ${
+    /*
+     * Folded away by default.
+     *
+     * This used to sit open in the bar, and a full Windows path wrapped onto
+     * three lines above the document — the first thing you saw on opening a
+     * file was a storage location you did not ask for. It is genuinely useful
+     * to the few people whose agent cannot call tools, and noise to everyone
+     * else, which is exactly what a disclosure is for. No script needed.
+     */
+    cached
+      ? `<details class="chat-help">
+           <summary>Let chat read this document</summary>
+           <p>In Copilot chat, type <code>#document</code> and mention this file.</p>
+           <p>For an agent that can only read files, point it at:</p>
+           <p><code>${escapeHtml(cached.fsPath)}</code></p>
+         </details>`
+      : ''
+  }`
 }
 
 // Inline SVG rather than a file: no resource is fetched, so the strict
@@ -248,9 +263,16 @@ function page(title: string, body: string): string {
     padding: 10px 0;
     background: var(--vscode-editor-background);
   }
-  /* Pushes "Open original" to the far right, away from the two primary
-     controls, so the grouping reads as: act on it | look at it | leave. */
-  .bar .ghost { margin-left: auto; }
+  /*
+   * The three controls simply flow and wrap together.
+   *
+   * "Open original" used to be pushed right with margin-left:auto. An auto
+   * margin on a flex item that wraps claims the whole of the next line, so in
+   * a narrow pane the button sat alone on its own row looking unrelated to the
+   * other two — and since Edit opens beside the preview, a narrow pane is now
+   * the normal case rather than the exception.
+   */
+  .bar .ghost { margin-left: 0; }
 
   .bar-sub {
     position: sticky;
@@ -264,10 +286,26 @@ function page(title: string, body: string): string {
     margin-bottom: 8px;
   }
   .bar-sub strong { color: var(--vscode-foreground); }
-  .bar-sub code {
+
+  .chat-help {
+    font-size: .85em;
+    color: var(--vscode-descriptionForeground);
+    margin: 0 0 14px;
+  }
+  .chat-help summary {
+    cursor: pointer;
+    user-select: none;
+    padding: 2px 0;
+  }
+  .chat-help summary:hover { color: var(--vscode-foreground); }
+  .chat-help p { margin: 6px 0; }
+  .chat-help code {
     background: var(--vscode-textCodeBlock-background);
     padding: 1px 5px;
     border-radius: 3px;
+    /* A Windows path has no spaces to break at, so it must be allowed to
+       break anywhere rather than forcing the pane to scroll sideways. */
+    word-break: break-all;
   }
 
   .btn {

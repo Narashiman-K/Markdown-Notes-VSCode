@@ -47,8 +47,26 @@ export function registerPreview(source: vscode.Uri, panel: vscode.WebviewPanel):
     if (!editor) return
 
     lastProgrammaticScroll = Date.now()
+
+    /*
+     * Sub-line precision, which this needs more than most documents would.
+     *
+     * A converted PDF puts each paragraph on a single source line, so line 5
+     * can be twenty wrapped rows on screen. Revealing whole lines meant the
+     * editor sat still through an entire paragraph and then jumped a screen,
+     * which reads as the panes disagreeing even though both are technically
+     * correct. Turning the fractional part into a character offset within the
+     * line gives VS Code a position inside the wrapped run to scroll to.
+     */
     const line = clampLine(editor.document, message.line)
-    editor.revealRange(new vscode.Range(line, 0, line, 0), vscode.TextEditorRevealType.AtTop)
+    const fraction = message.line - Math.floor(message.line)
+    const length = editor.document.lineAt(line).text.length
+    const character = Math.max(0, Math.min(Math.round(fraction * length), length))
+
+    editor.revealRange(
+      new vscode.Range(line, character, line, character),
+      vscode.TextEditorRevealType.AtTop
+    )
   })
 }
 
@@ -90,11 +108,24 @@ export function registerScrollSync(context: vscode.ExtensionContext): void {
       const panel = previews.get(sourceKey)
       if (!panel) return
 
-      const top = event.visibleRanges[0]?.start.line
-      if (typeof top !== 'number') return
+      const top = event.visibleRanges[0]?.start
+      if (!top) return
+
+      /*
+       * The same sub-line precision in reverse.
+       *
+       * When a long line is soft-wrapped, VS Code reports the first *visible
+       * character* rather than always the start of the line, so scrolling
+       * through a wrapped paragraph gives a rising character offset on a fixed
+       * line number. Expressing that as a fraction of the line lets the
+       * preview move continuously instead of waiting for the line number to
+       * tick over and then lurching a screen.
+       */
+      const length = event.textEditor.document.lineAt(top.line).text.length
+      const fraction = length > 0 ? Math.min(1, top.character / length) : 0
 
       lastProgrammaticScroll = Date.now()
-      void panel.webview.postMessage({ type: 'revealLine', line: top })
+      void panel.webview.postMessage({ type: 'revealLine', line: top.line + fraction })
     }),
 
     // A closed draft should not keep its source keyed forever; the map would
