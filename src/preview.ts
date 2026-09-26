@@ -19,9 +19,11 @@
  * is not a feature anyone will find.
  */
 import * as vscode from 'vscode'
+import { randomBytes } from 'node:crypto'
 import MarkdownIt from 'markdown-it'
 import { basename, convertDocument } from './convert'
 import { cachePreview } from './agent'
+import { registerPreview } from './sync'
 
 export const VIEW_TYPE = 'suprasuta.documentPreview'
 
@@ -56,6 +58,24 @@ md.validateLink = (url: string): boolean => {
   return defaultValidateLink(url)
 }
 
+/*
+ * Stamps each block element with the source line it came from.
+ *
+ * This is what lets the preview and the editor scroll together: markdown-it
+ * already tracks `token.map` for block tokens, so nothing has to be inferred
+ * from the rendered HTML.
+ *
+ * Only top-level tokens are walked; inline content has no map of its own, and
+ * line-level precision is all scroll syncing can use.
+ */
+md.core.ruler.push('suprasuta_source_lines', (state) => {
+  for (const token of state.tokens) {
+    // nesting 1 opens a tag and 0 is self-closing; -1 is a closing tag, which
+    // carries no attributes.
+    if (token.map && token.nesting >= 0) token.attrSet('data-line', String(token.map[0]))
+  }
+})
+
 interface PreviewDocument extends vscode.CustomDocument {
   readonly uri: vscode.Uri
 }
@@ -73,7 +93,20 @@ export class DocumentPreviewProvider implements vscode.CustomReadonlyEditorProvi
   }
 
   async resolveCustomEditor(document: PreviewDocument, panel: vscode.WebviewPanel): Promise<void> {
-    panel.webview.options = { enableScripts: false, enableCommandUris: [...ALLOWED_COMMANDS] }
+    /*
+     * Scripts are on, which they were not before, because a webview cannot
+     * report its own scroll position without them.
+     *
+     * The document being rendered is untrusted — it is somebody's PDF — so the
+     * protection is layered rather than removed. markdown-it runs with
+     * html:false, so any HTML inside the document is escaped as text and never
+     * parsed. The policy below admits exactly one script, identified by a
+     * nonce generated per render, and nothing else: no inline handlers, no
+     * external anything, no eval. `enableCommandUris` stays an allowlist of
+     * two commands rather than `true`.
+     */
+    panel.webview.options = { enableScripts: true, enableCommandUris: [...ALLOWED_COMMANDS] }
+    registerPreview(document.uri, panel)
 
     let disposed = false
     panel.onDidDispose(() => {
@@ -178,15 +211,18 @@ function status(title: string, detail: string): string {
 
 function page(title: string, body: string): string {
   /*
-   * Scripts stay disabled. markdown-it runs with html:false so embedded HTML in
-   * the document is escaped rather than executed, and the policy below is the
-   * second layer under that.
+   * One script, admitted by a nonce that changes on every render, and nothing
+   * else. No external sources, no eval, no inline event handlers — an
+   * attribute like onclick="..." inside a converted document would be refused
+   * by this policy even if it survived markdown-it's html:false escaping.
    */
+  const nonce = randomBytes(16).toString('base64')
+
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; script-src 'nonce-${nonce}';">
 <title>${escapeHtml(title)}</title>
 <style>
   body {
@@ -324,7 +360,74 @@ function page(title: string, body: string): string {
   .status strong { display: block; color: var(--vscode-foreground); margin-bottom: .5em; }
 </style>
 </head>
-<body>${body}</body>
+<body>${body}
+<script nonce="${nonce}">
+/*
+ * Scroll reporting, and nothing else.
+ *
+ * The anchors are the data-line attributes stamped on each block. Positions
+ * are interpolated between them rather than snapped to the nearest, so a long
+ * code block scrolls smoothly instead of the other pane jumping a screen at a
+ * time when its first line finally passes the top edge.
+ */
+(function () {
+  const vscode = acquireVsCodeApi()
+  let anchors = []
+  let stale = true
+  let echo = false
+
+  function rebuild() {
+    anchors = []
+    for (const el of document.querySelectorAll('[data-line]')) {
+      const line = Number(el.dataset.line)
+      if (Number.isFinite(line)) anchors.push({ line: line, top: el.offsetTop })
+    }
+    // Without a starting point the first screenful has nothing to interpolate
+    // from, and everything above the first heading maps to line zero anyway.
+    if (!anchors.length || anchors[0].line > 0) anchors.unshift({ line: 0, top: 0 })
+    anchors.sort(function (a, b) { return a.top - b.top })
+    stale = false
+  }
+
+  /** Linear interpolation between the two anchors bracketing a value. */
+  function between(value, from, to) {
+    if (stale) rebuild()
+    if (!anchors.length) return 0
+    let lo = 0, hi = anchors.length - 1
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1
+      if (anchors[mid][from] <= value) lo = mid; else hi = mid - 1
+    }
+    const a = anchors[lo], b = anchors[lo + 1]
+    if (!b) return a[to]
+    const span = b[from] - a[from]
+    if (span <= 0) return a[to]
+    const ratio = Math.min(1, Math.max(0, (value - a[from]) / span))
+    return a[to] + (b[to] - a[to]) * ratio
+  }
+
+  addEventListener('resize', function () { stale = true })
+  // Images and web fonts finishing late change every offset below them.
+  addEventListener('load', function () { stale = true }, true)
+
+  addEventListener('scroll', function () {
+    if (echo) return
+    vscode.postMessage({ type: 'scrolled', line: between(scrollY, 'top', 'line') })
+  }, { passive: true })
+
+  addEventListener('message', function (event) {
+    const message = event.data
+    if (!message || message.type !== 'revealLine') return
+    echo = true
+    scrollTo({ top: between(message.line, 'line', 'top') })
+    // Cleared on the next frame, which is when the browser has finished
+    // dispatching the scroll this caused. Without it the two panes push each
+    // other along and drift apart.
+    requestAnimationFrame(function () { echo = false })
+  })
+}())
+</script>
+</body>
 </html>`
 }
 

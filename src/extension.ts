@@ -16,8 +16,11 @@ import { basename, convertDocument, isSupported, markdownUriFor } from './conver
 import { DocumentPreviewProvider, VIEW_TYPE } from './preview'
 import { registerAgentTool } from './agent'
 import { registerBlockTints } from './decorations'
+import { registerDraft, registerScrollSync } from './sync'
 
 export function activate(context: vscode.ExtensionContext): void {
+  // Joins a preview to the draft opened beside it, in both directions.
+  registerScrollSync(context)
   // Chat access: a language model tool for Copilot, and a cache file for
   // agents that can only read from disk.
   registerAgentTool(context)
@@ -91,11 +94,22 @@ async function editCommand(uri: vscode.Uri | undefined): Promise<void> {
     return
   }
 
+  /*
+   * Beside, not on top.
+   *
+   * Edit used to replace the preview in the same slot, which made View and
+   * Edit two places you alternated between. Side by side is what the request
+   * was actually for: read the rendered version, fix the source next to it,
+   * and watch both scroll together.
+   */
+  const column = vscode.ViewColumn.Beside
+
   const beside = markdownUriFor(target)
   try {
     await vscode.workspace.fs.stat(beside)
     const existing = await vscode.workspace.openTextDocument(beside)
-    await vscode.window.showTextDocument(existing, { preview: false })
+    await vscode.window.showTextDocument(existing, { preview: false, viewColumn: column })
+    registerDraft(existing.uri, target)
     return
   } catch {
     // Nothing saved yet, which is the normal case.
@@ -111,8 +125,9 @@ async function editCommand(uri: vscode.Uri | undefined): Promise<void> {
         // default to report.pdf.md next to the original, and what gives the
         // buffer Markdown syntax highlighting without setting a language.
         const draft = await vscode.workspace.openTextDocument(beside.with({ scheme: 'untitled' }))
-        const editor = await vscode.window.showTextDocument(draft, { preview: false })
+        const editor = await vscode.window.showTextDocument(draft, { preview: false, viewColumn: column })
         await editor.edit((builder) => builder.insert(new vscode.Position(0, 0), markdown))
+        registerDraft(draft.uri, target)
       } catch (err) {
         void vscode.window.showErrorMessage(String((err as Error)?.message ?? err))
       }
