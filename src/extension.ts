@@ -17,10 +17,14 @@ import { DocumentPreviewProvider, VIEW_TYPE } from './preview'
 import { registerAgentTool } from './agent'
 import { registerBlockTints } from './decorations'
 import { registerDraft, registerScrollSync } from './sync'
+import { registerSmartPaste } from './paste'
 
 export function activate(context: vscode.ExtensionContext): void {
   // Joins a preview to the draft opened beside it, in both directions.
   registerScrollSync(context)
+
+  // Keeps formatting when pasting from Word, Outlook, a browser or a sheet.
+  registerSmartPaste(context)
   // Chat access: a language model tool for Copilot, and a cache file for
   // agents that can only read from disk.
   registerAgentTool(context)
