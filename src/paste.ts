@@ -44,10 +44,60 @@ installNodeRuntime()
 function fragment(html: string): string {
   const start = html.indexOf('<!--StartFragment-->')
   const end = html.indexOf('<!--EndFragment-->')
-  if (start !== -1 && end > start) {
-    return html.slice(start + '<!--StartFragment-->'.length, end)
+  if (start === -1 || end <= start) return html
+
+  const slice = html.slice(start + '<!--StartFragment-->'.length, end)
+
+  /*
+   * Refuse a slice that orphans rows or list items.
+   *
+   * Excel puts the markers *inside* the table, wrapped around the rows, so
+   * trimming to them yields bare `<tr>` elements with no table around them.
+   * A `<tr>` outside a table is invalid, and the parser discards it silently,
+   * keeping only the text and links inside — which turned a copied
+   * spreadsheet into one run-on paragraph while looking, from the code's
+   * point of view, like a perfectly successful conversion.
+   */
+  const orphaned = /<(tr|td|th|li|dt|dd)\b/i.test(slice) && !/<(table|ul|ol|dl)\b/i.test(slice)
+  return orphaned ? html : slice
+}
+
+/**
+ * Gives heading-less tables a heading row, so spreadsheets survive.
+ *
+ * The GFM rules only recognise a table that already has a `<thead>`; anything
+ * else is left as raw HTML. Excel and Google Sheets both emit plain
+ * `<tr><td>`, so pasting a block of cells produced the worst result of any
+ * source.
+ */
+function promoteHeaderRows(html: string): string {
+  let doc: Document
+  try {
+    doc = new DOMParser().parseFromString(html, 'text/html')
+  } catch {
+    return html
   }
-  return html
+
+  for (const table of Array.from(doc.querySelectorAll('table'))) {
+    if (table.querySelector('thead')) continue
+
+    const first = table.querySelector('tr')
+    if (!first || first.children.length === 0) continue
+
+    const head = doc.createElement('thead')
+    const row = doc.createElement('tr')
+    for (const cell of Array.from(first.children)) {
+      const th = doc.createElement('th')
+      th.innerHTML = cell.innerHTML
+      row.appendChild(th)
+    }
+    head.appendChild(row)
+
+    first.remove()
+    table.insertBefore(head, table.firstChild)
+  }
+
+  return doc.body.innerHTML
 }
 
 class SmartPasteProvider implements vscode.DocumentPasteEditProvider {
@@ -66,7 +116,7 @@ class SmartPasteProvider implements vscode.DocumentPasteEditProvider {
 
     let markdown: string
     try {
-      markdown = htmlToMarkdown(fragment(html)).trim()
+      markdown = htmlToMarkdown(promoteHeaderRows(fragment(html))).trim()
     } catch {
       // A malformed clipboard should fall back to VS Code's ordinary paste,
       // not raise an error over something as routine as Ctrl+V.
