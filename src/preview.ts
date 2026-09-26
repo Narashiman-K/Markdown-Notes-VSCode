@@ -376,11 +376,41 @@ function page(title: string, body: string): string {
   let stale = true
   let echo = false
 
+  /*
+   * How much of the top of the viewport the sticky toolbar covers.
+   *
+   * The bar and the subtitle line are both position:sticky, so once the page
+   * scrolls they sit over the first ninety-odd pixels of content. The topmost
+   * line the reader can actually see is therefore well below scrollY, and
+   * reporting scrollY as the top line made the editor lag the preview by a
+   * screenful of text. Measured rather than hard-coded, because the subtitle
+   * wraps onto two lines at narrow widths.
+   */
+  function stickyHeight() {
+    let total = 0
+    for (const sel of ['.bar', '.bar-sub']) {
+      const el = document.querySelector(sel)
+      if (el) total += el.getBoundingClientRect().height
+    }
+    return total
+  }
+
   function rebuild() {
     anchors = []
+    /*
+     * Absolute document offsets, not offsetTop.
+     *
+     * offsetTop is measured from the offsetParent's padding edge, and this
+     * body carries 32px of horizontal padding and a sticky bar in the flow,
+     * so the two coordinate systems disagree by a variable amount. Adding
+     * scrollY to the bounding rect gives a position in the same space as
+     * scrollY itself, which is what the interpolation compares against.
+     */
     for (const el of document.querySelectorAll('[data-line]')) {
       const line = Number(el.dataset.line)
-      if (Number.isFinite(line)) anchors.push({ line: line, top: el.offsetTop })
+      if (Number.isFinite(line)) {
+        anchors.push({ line: line, top: el.getBoundingClientRect().top + scrollY })
+      }
     }
     // Without a starting point the first screenful has nothing to interpolate
     // from, and everything above the first heading maps to line zero anyway.
@@ -412,14 +442,16 @@ function page(title: string, body: string): string {
 
   addEventListener('scroll', function () {
     if (echo) return
-    vscode.postMessage({ type: 'scrolled', line: between(scrollY, 'top', 'line') })
+    // The first line the reader can see, not the first line scrolled past.
+    vscode.postMessage({ type: 'scrolled', line: between(scrollY + stickyHeight(), 'top', 'line') })
   }, { passive: true })
 
   addEventListener('message', function (event) {
     const message = event.data
     if (!message || message.type !== 'revealLine') return
     echo = true
-    scrollTo({ top: between(message.line, 'line', 'top') })
+    // Park the line below the toolbar rather than underneath it.
+    scrollTo({ top: Math.max(0, between(message.line, 'line', 'top') - stickyHeight()) })
     // Cleared on the next frame, which is when the browser has finished
     // dispatching the scroll this caused. Without it the two panes push each
     // other along and drift apart.
