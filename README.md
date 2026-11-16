@@ -58,14 +58,23 @@ Markdown to the extension's storage folder. That is off with
 `suprasuta.cachePreviewsForAgents` if you would rather it did not. Nothing is
 ever written beside your own documents unless you ask for a conversion.
 
-## What it does not do
+## For your own Markdown files
 
-**It does not touch `.md` files.** VS Code's built-in Markdown preview is good
-and already familiar; replacing it uninvited would be presumptuous.
+VS Code's built-in Markdown preview stays; the extension adds to it rather than
+replacing it.
+
+| | |
+| --- | --- |
+| **Mermaid diagrams** | ```` ```mermaid ```` blocks are drawn as diagrams in the Markdown preview: flowcharts, sequence diagrams, mind maps, timelines and the rest. Drawn on your machine; nothing is loaded from the internet. A block with a mistake keeps its code and shows why. |
+| **Table of contents** | Right-click in a Markdown file → **Insert or update table of contents**. The list of links sits between invisible `<!-- toc -->` markers and updates itself each time you save (`suprasuta.updateTableOfContentsOnSave`). The same format as the Suprasūtā app, so a file moves between them unchanged. |
+| **Smart paste** | Pasting from Word, Outlook, a web page or a spreadsheet keeps the headings, lists, links and tables as Markdown. |
+| **Block tints** | A soft background behind code blocks and quotes (and tables or headings, if you like), so you can see where each starts and ends. |
+
+## What it does not do
 
 **No images or audio, yet.** Optical character recognition needs an engine far
 larger than this whole extension, and audio transcription needs a paid account.
-Both are planned for 1.1 as an opt-in download. Both work today in the
+Both are planned as an opt-in download. Both work today in the
 [desktop app](https://apps.microsoft.com/detail/9N1S7QP2WNLX) and the
 [MCP server](https://www.npmjs.com/package/suprasuta-markdown-mcp).
 
@@ -76,6 +85,8 @@ Both are planned for 1.1 as an opt-in download. Both work today in the
 | `suprasuta.convertedFileLocation` | `besideOriginal` | Or `askEachTime` for a save dialog |
 | `suprasuta.openAfterConverting` | `true` | Open the `.md` once it is written |
 | `suprasuta.cachePreviewsForAgents` | `true` | Save previews to extension storage for chat agents |
+| `suprasuta.updateTableOfContentsOnSave` | `true` | Keep a table of contents up to date on save |
+| `suprasuta.highlightBlocks` | code, quotes | Which blocks get a background tint; `[]` for none |
 
 ## Privacy
 

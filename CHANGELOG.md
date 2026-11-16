@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.1.0
+
+- **Mermaid diagrams in the Markdown preview.** ```` ```mermaid ```` blocks are
+  drawn as diagrams in VS Code's own preview, in light and dark themes. Drawn
+  locally, in Mermaid's strict mode; nothing is fetched from the internet.
+- **Table of contents.** *Insert or update table of contents* (right-click in a
+  Markdown file, or the Command Palette) writes a linked list of the headings
+  between `<!-- toc -->` markers, and saving keeps it up to date. Same format as
+  the Suprasūtā Windows and web apps.
+- **Security.** Spreadsheets are read with SheetJS 0.20.3, and a cut-off
+  spreadsheet is refused before it is parsed.
+
 ## 1.0.0
 
 First public release.

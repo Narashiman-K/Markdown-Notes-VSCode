@@ -88,4 +88,21 @@ await build({
   logLevel: 'info'
 })
 
+/*
+ * The script VS Code's own Markdown preview runs (`markdown.previewScripts`),
+ * which draws Mermaid diagrams. A browser script: one self-contained file,
+ * Mermaid bundled in, nothing loaded from the internet.
+ */
+await build({
+  entryPoints: ['src/mermaidPreview.ts'],
+  outfile: 'media/mermaid-preview.js',
+  bundle: true,
+  platform: 'browser',
+  format: 'iife',
+  target: 'es2020',
+  minify: true,
+  legalComments: 'none',
+  logLevel: 'info'
+})
+
 

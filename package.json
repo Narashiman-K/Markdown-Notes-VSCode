@@ -1,8 +1,8 @@
 {
   "name": "suprasuta-markdown-notes",
   "displayName": "Suprasūtā Markdown Notes",
-  "description": "Open PDF, Word, Excel, PowerPoint, OpenDocument and EPUB files in VS Code as Markdown. Converts locally — nothing is uploaded.",
-  "version": "1.0.0",
+  "description": "Open PDF, Word, Excel, PowerPoint, OpenDocument and EPUB files in VS Code as Markdown, draw Mermaid diagrams in the Markdown preview, and keep a table of contents up to date. Everything runs locally; nothing is uploaded.",
+  "version": "1.1.0",
   "publisher": "narashiman-k",
   "license": "SEE LICENSE IN LICENSE.md",
   "author": {
@@ -36,7 +36,11 @@
     "open pdf",
     "open word document",
     "document converter",
-    "offline"
+    "offline",
+    "mermaid",
+    "mermaid preview",
+    "table of contents",
+    "markdown toc"
   ],
   "main": "./dist/extension.js",
   "activationEvents": [
@@ -102,6 +106,11 @@
         "title": "Open in its own application",
         "category": "Suprasūtā",
         "icon": "$(link-external)"
+      },
+      {
+        "command": "suprasuta.insertTableOfContents",
+        "title": "Insert or update table of contents",
+        "category": "Suprasūtā"
       }
     ],
     "menus": {
@@ -135,6 +144,10 @@
         {
           "command": "suprasuta.openInDefaultApp",
           "when": "false"
+        },
+        {
+          "command": "suprasuta.insertTableOfContents",
+          "when": "editorLangId == markdown"
         }
       ],
       "editor/title/context": [
@@ -142,6 +155,13 @@
           "command": "suprasuta.convertToMarkdown",
           "when": "resourceExtname =~ /\\.(pdf|docx|xlsx|xlsm|xls|pptx|odt|ods|epub|csv|tsv)$/i",
           "group": "1_run"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "suprasuta.insertTableOfContents",
+          "when": "editorLangId == markdown",
+          "group": "1_modification@9"
         }
       ]
     },
@@ -194,6 +214,11 @@
             "blockquote"
           ],
           "markdownDescription": "Which Markdown blocks get a background tint, so you can see where each one starts and ends. Set to `[]` to switch tinting off. Change the colours under `workbench.colorCustomizations` with the `suprasuta.*Background` keys."
+        },
+        "suprasuta.updateTableOfContentsOnSave": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "When a Markdown file has a table of contents made by **Insert or update table of contents** (between `<!-- toc -->` markers), bring it up to date with the headings each time the file is saved."
         }
       }
     },
@@ -266,6 +291,9 @@
           ]
         }
       }
+    ],
+    "markdown.previewScripts": [
+      "./media/mermaid-preview.js"
     ]
   },
   "scripts": {
@@ -290,6 +318,7 @@
     "jszip": "^3.10.1",
     "mammoth": "^1.12.1",
     "markdown-it": "^14.1.0",
+    "mermaid": "^11.17.2",
     "pdfjs-dist": "^4.10.38",
     "turndown": "^7.2.4",
     "turndown-plugin-gfm": "^1.0.2",

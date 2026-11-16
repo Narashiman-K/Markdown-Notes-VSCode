@@ -18,6 +18,7 @@ import { registerAgentTool } from './agent'
 import { registerBlockTints } from './decorations'
 import { registerDraft, registerScrollSync } from './sync'
 import { registerSmartPaste } from './paste'
+import { registerToc } from './toc'
 
 export function activate(context: vscode.ExtensionContext): void {
   // Joins a preview to the draft opened beside it, in both directions.
@@ -31,6 +32,9 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // Block boundaries made visible in any Markdown file, converted or not.
   registerBlockTints(context)
+
+  // Insert a table of contents; kept up to date on save.
+  registerToc(context)
 
   context.subscriptions.push(
     DocumentPreviewProvider.register(context),

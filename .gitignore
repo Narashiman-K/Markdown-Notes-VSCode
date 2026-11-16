@@ -5,3 +5,6 @@ build/
 .vscode-test/
 # Conversion output produced while testing against the sample documents.
 samples/*.md
+
+# Built by scripts/build.mjs (Mermaid for the Markdown preview)
+media/mermaid-preview.js

@@ -16,6 +16,22 @@ terminal.
 
 ---
 
+## Part 0 — Try the package yourself first (5 minutes)
+
+```powershell
+code --install-extension "D:\Calude Co-work space\Build Projects\Markdown-Notes-VSCode-AG-Extension\build\suprasuta-markdown-notes-1.1.0.vsix"
+```
+
+Then, in VS Code:
+
+1. Open any PDF or Word file: it shows as Markdown, with **Save as .md**, **View / Edit** and **Open original** across the top.
+2. Open `samples\mermaid-and-toc.md` and press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd>: the diagrams are drawn.
+3. Right-click in that file → **Insert or update table of contents**, add a heading, save: the contents list updates.
+
+In Antigravity: **Extensions** → `...` menu → **Install from VSIX…** and pick the same file.
+
+---
+
 ## Part 1 — VS Code Marketplace
 
 ### 1. Create the publisher
@@ -58,7 +74,7 @@ nothing is written into the project.
 ### 4. Publish
 
 ```powershell
-npx @vscode/vsce publish --packagePath build\suprasuta-markdown-notes-1.0.0.vsix
+npx @vscode/vsce publish --packagePath build\suprasuta-markdown-notes-1.1.0.vsix
 ```
 
 The listing appears within a few minutes, then takes up to fifteen more to pass
@@ -105,7 +121,7 @@ $env:OVSX_PAT = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
   [Runtime.InteropServices.Marshal]::SecureStringToBSTR($t))
 
 npx ovsx create-namespace narashiman-k
-npx ovsx publish build\suprasuta-markdown-notes-1.0.0.vsix
+npx ovsx publish build\suprasuta-markdown-notes-1.1.0.vsix
 
 Remove-Item Env:\OVSX_PAT
 ```
@@ -121,10 +137,10 @@ Go to **<https://github.com/Narashiman-K/Markdown-Notes-VSCode/releases/new>**.
 
 | Field | Value |
 | --- | --- |
-| Tag | `v1.0.0` — already pushed, pick it from the list |
-| Title | `1.0.0 — first public release` |
-| Description | Paste the `1.0.0` section of [CHANGELOG.md](CHANGELOG.md) |
-| Attach | `build\suprasuta-markdown-notes-1.0.0.vsix` |
+| Tag | `v1.1.0` — pushed with the release, pick it from the list |
+| Title | `1.1.0 — first public release: Mermaid diagrams and tables of contents` |
+| Description | Paste the `1.1.0` and `1.0.0` sections of [CHANGELOG.md](CHANGELOG.md) |
+| Attach | `build\suprasuta-markdown-notes-1.1.0.vsix` |
 
 Attaching the `.vsix` matters more than it looks: it is the only way someone on
 a fork with no marketplace access, or behind a corporate proxy, can install it
